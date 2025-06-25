@@ -4,9 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Nomina
 from .serializers import NominaSerializer
-from rest_framework import status, generics
+from rest_framework import status
 from drf_spectacular.utils import extend_schema
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 # Create your views here.
 class NominaListView(APIView):
@@ -60,7 +60,37 @@ class NominaDetailedFile(APIView):
             
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+
+class NominaDetailedJsonFile(APIView):
+    def get(self, request):
+        try:
+            nominas = Nomina.objects.all()
+            date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+            data = []
+            for item in nominas:
+                data.append({
+                    "rnc_empresa": item.rnc_empresa.strip(),
+                    "fecha": date,
+                    "codigo_cliente": item.codigo_cliente.strip(),
+                    "moneda": item.moneda.strip(),
+                    "cuenta_bancaria_empresa": item.cuenta_bancaria_empresa.strip(),
+                    "cuenta_bancaria_empleado": item.cuenta_bancaria_empleado.strip(),
+                    "cedula_empleado": item.cedula_empleado.strip(),
+                    "monto_pagar": item.monto_pagar.strip(),
+                    "referencia": item.referencia.strip() if item.referencia else "Null"
+                })
+
+            Nomina.objects.all().update(fecha_proceso=date)
+
+            response = JsonResponse(data, safe=False, json_dumps_params={'indent': 2})
+            response['Content-Disposition'] = 'attachment; filename="nomina.json"'
+            return response
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Frontend view to render the HTML page
 def nomina_frontend(request):
     return render(request, 'nomina/nomina_frontend.html')
